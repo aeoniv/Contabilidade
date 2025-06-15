@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador de Impostos</title>
+    <!-- Inclui Tailwind CSS para estilização rápida e responsiva -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f2f5;
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-4 sm:p-6 lg:p-8">
+    <div class="bg-white p-6 sm:p-8 lg:p-10 rounded-xl shadow-lg w-full max-w-lg">
+        <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">Simulador de Impostos Simplificado</h1>
+        <p class="text-sm text-gray-600 text-center mb-6">
+            Este simulador é apenas para fins ilustrativos, utilizando taxas hipotéticas. Para um cálculo preciso e assessoria tributária, consulte um profissional.
+        </p>
+
+        <div class="space-y-4">
+            <div>
+                <label for="taxpayerType" class="block text-gray-700 text-sm font-medium mb-2">Tipo de Contribuinte:</label>
+                <select id="taxpayerType" class="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="PJ">Pessoa Jurídica (Empresa)</option>
+                    <!-- <option value="PF">Pessoa Física (Autônomo)</option> -->
+                </select>
+            </div>
+
+            <div>
+                <label for="activityType" class="block text-gray-700 text-sm font-medium mb-2">Tipo de Atividade (Exemplos):</label>
+                <select id="activityType" class="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="services">Serviços</option>
+                    <option value="commerce">Comércio</option>
+                    <option value="industry">Indústria</option>
+                </select>
+            </div>
+
+            <div>
+                <label for="monthlyRevenue" class="block text-gray-700 text-sm font-medium mb-2">Faturamento Mensal (R$):</label>
+                <input type="number" id="monthlyRevenue" placeholder="Ex: 10000" class="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" min="0">
+            </div>
+
+            <div>
+                <label for="monthlyExpenses" class="block text-gray-700 text-sm font-medium mb-2">Despesas Mensais (R$):</label>
+                <input type="number" id="monthlyExpenses" placeholder="Ex: 2000" class="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" min="0">
+            </div>
+
+            <button id="calculateBtn" class="w-full bg-blue-600 text-white p-3 rounded-md font-semibold hover:bg-blue-700 transition duration-300 shadow-md">
+                Calcular Impostos
+            </button>
+        </div>
+
+        <div id="results" class="mt-8 space-y-6">
+            <!-- Resultados do Simples Nacional -->
+            <div class="bg-gray-50 p-4 rounded-lg shadow-sm">
+                <h2 class="text-xl font-semibold text-gray-700 mb-3">Simples Nacional</h2>
+                <p class="text-gray-600">Alíquota Aproximada: <span id="snRate" class="font-medium text-blue-600">--</span></p>
+                <p class="text-gray-600">Imposto Total: <span id="snTax" class="font-medium text-green-600">R$ 0,00</span></p>
+                <p class="text-gray-600">Valor Líquido: <span id="snNet" class="font-medium text-purple-600">R$ 0,00</span></p>
+            </div>
+
+            <!-- Resultados do Lucro Presumido -->
+            <div class="bg-gray-50 p-4 rounded-lg shadow-sm">
+                <h2 class="text-xl font-semibold text-gray-700 mb-3">Lucro Presumido</h2>
+                <p class="text-gray-600">Alíquota Aproximada: <span id="lpRate" class="font-medium text-blue-600">--</span></p>
+                <p class="text-gray-600">Imposto Total: <span id="lpTax" class="font-medium text-green-600">R$ 0,00</span></p>
+                <p class="text-gray-600">Valor Líquido: <span id="lpNet" class="font-medium text-purple-600">R$ 0,00</span></p>
+            </div>
+
+            <!-- Resultados do Lucro Real -->
+            <div class="bg-gray-50 p-4 rounded-lg shadow-sm">
+                <h2 class="text-xl font-semibold text-gray-700 mb-3">Lucro Real</h2>
+                <p class="text-gray-600">Alíquota Aproximada: <span id="lrRate" class="font-medium text-blue-600">--</span></p>
+                <p class="text-gray-600">Imposto Total: <span id="lrTax" class="font-medium text-green-600">R$ 0,00</span></p>
+                <p class="text-gray-600">Valor Líquido: <span id="lrNet" class="font-medium text-purple-600">R$ 0,00</span></p>
+            </div>
+
+            <!-- Comparativo Geral -->
+            <div id="comparison" class="bg-blue-100 p-4 rounded-lg shadow-md mt-6 hidden">
+                <h2 class="text-xl font-semibold text-blue-800 mb-3 text-center">Resumo Comparativo</h2>
+                <p class="text-blue-700 text-center">O regime mais vantajoso é: <span id="bestRegime" class="font-bold text-blue-900"></span></p>
+                <p class="text-blue-700 text-center">Com uma economia potencial de: <span id="monthlySavings" class="font-bold text-blue-900">R$ 0,00</span> (em comparação ao regime mais caro)</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Função para formatar números como moeda brasileira
+        const formatCurrency = (value) => {
+            return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        };
+
+        // Event listener para o botão de cálculo
+        document.getElementById('calculateBtn').addEventListener('click', () => {
+            const taxpayerType = document.getElementById('taxpayerType').value;
+            const activityType = document.getElementById('activityType').value;
+            const monthlyRevenue = parseFloat(document.getElementById('monthlyRevenue').value);
+            const monthlyExpenses = parseFloat(document.getElementById('monthlyExpenses').value);
+
+            // Validação de entrada
+            if (isNaN(monthlyRevenue) || monthlyRevenue < 0) {
+                alertUser("Por favor, insira um valor válido para o Faturamento Mensal.");
+                return;
+            }
+            if (isNaN(monthlyExpenses) || monthlyExpenses < 0) {
+                 alertUser("Por favor, insira um valor válido para as Despesas Mensais.");
+                 return;
+            }
+
+            // Objeto para armazenar os resultados de cada regime
+            const results = {};
+
+            // --- Simulação Simples Nacional ---
+            let snRate; // Alíquota do Simples Nacional
+            if (activityType === 'services') {
+                snRate = 0.06; // Exemplo para serviços
+            } else if (activityType === 'commerce') {
+                snRate = 0.04; // Exemplo para comércio
+            } else { // industry
+                snRate = 0.045; // Exemplo para indústria
+            }
+            const snTax = monthlyRevenue * snRate;
+            const snNet = monthlyRevenue - snTax;
+            results.simplesNacional = { tax: snTax, net: snNet, rate: snRate };
+
+            // --- Simulação Lucro Presumido ---
+            // Taxas fictícias para Lucro Presumido (IRPJ, CSLL, PIS, COFINS combinados)
+            let lpRate;
+            if (activityType === 'services') {
+                lpRate = 0.1333; // Aproximação para serviços (IRPJ+CSLL+PIS+COFINS)
+            } else if (activityType === 'commerce') {
+                lpRate = 0.0593; // Aproximação para comércio (IRPJ+CSLL+PIS+COFINS)
+            } else { // industry
+                lpRate = 0.0593; // Aproximação para indústria (mesma que comércio)
+            }
+            const lpTax = monthlyRevenue * lpRate;
+            const lpNet = monthlyRevenue - lpTax;
+            results.lucroPresumido = { tax: lpTax, net: lpNet, rate: lpRate };
+
+            // --- Simulação Lucro Real ---
+            // Taxas fictícias para Lucro Real (IRPJ, CSLL, PIS, COFINS)
+            let lrTax;
+            let lrRate;
+
+            // Para Lucro Real, a base de cálculo é o lucro (receita - despesas)
+            const actualProfit = monthlyRevenue - monthlyExpenses;
+
+            if (activityType === 'services') {
+                // IRPJ (15% sobre lucro) + Adicional (10% sobre lucro acima de 20k/mês)
+                let irpj = actualProfit * 0.15;
+                if (actualProfit > 20000) {
+                    irpj += (actualProfit - 20000) * 0.10;
+                }
+                // CSLL (9% sobre lucro)
+                const csll = actualProfit * 0.09;
+                // PIS (1.65% sobre receita) e COFINS (7.6% sobre receita)
+                const pis = monthlyRevenue * 0.0165;
+                const cofins = monthlyRevenue * 0.076;
+                lrTax = irpj + csll + pis + cofins;
+                lrRate = (lrTax / monthlyRevenue) || 0; // Calculo da alíquota efetiva
+            } else { // Comércio e Indústria - Simplificação similar
+                let irpj = actualProfit * 0.15;
+                if (actualProfit > 20000) {
+                    irpj += (actualProfit - 20000) * 0.10;
+                }
+                const csll = actualProfit * 0.09;
+                const pis = monthlyRevenue * 0.0165;
+                const cofins = monthlyRevenue * 0.076;
+                lrTax = irpj + csll + pis + cofins;
+                lrRate = (lrTax / monthlyRevenue) || 0;
+            }
+            const lrNet = monthlyRevenue - lrTax;
+            results.lucroReal = { tax: lrTax, net: lrNet, rate: lrRate };
+
+            // Exibir resultados
+            document.getElementById('snRate').textContent = `${(results.simplesNacional.rate * 100).toFixed(2)}%`;
+            document.getElementById('snTax').textContent = formatCurrency(results.simplesNacional.tax);
+            document.getElementById('snNet').textContent = formatCurrency(results.simplesNacional.net);
+
+            document.getElementById('lpRate').textContent = `${(results.lucroPresumido.rate * 100).toFixed(2)}%`;
+            document.getElementById('lpTax').textContent = formatCurrency(results.lucroPresumido.tax);
+            document.getElementById('lpNet').textContent = formatCurrency(results.lucroPresumido.net);
+
+            document.getElementById('lrRate').textContent = `${(results.lucroReal.rate * 100).toFixed(2)}%`;
+            document.getElementById('lrTax').textContent = formatCurrency(results.lucroReal.tax);
+            document.getElementById('lrNet').textContent = formatCurrency(results.lucroReal.net);
+
+            // --- Comparativo ---
+            let cheapestRegime = 'Simples Nacional';
+            let minTax = results.simplesNacional.tax;
+
+            if (results.lucroPresumido.tax < minTax) {
+                minTax = results.lucroPresumido.tax;
+                cheapestRegime = 'Lucro Presumido';
+            }
+            if (results.lucroReal.tax < minTax) {
+                minTax = results.lucroReal.tax;
+                cheapestRegime = 'Lucro Real';
+            }
+
+            const regimes = [results.simplesNacional.tax, results.lucroPresumido.tax, results.lucroReal.tax];
+            const maxTax = Math.max(...regimes);
+            const monthlySavings = maxTax - minTax;
+
+            document.getElementById('bestRegime').textContent = cheapestRegime;
+            document.getElementById('monthlySavings').textContent = formatCurrency(monthlySavings);
+            document.getElementById('comparison').classList.remove('hidden'); // Exibir a seção de comparação
+        });
+
+        // Implementação de uma mensagem de alerta personalizada (substituindo alert())
+        function alertUser(message) {
+            // Cria um elemento div para o modal de alerta
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50';
+            modal.innerHTML = `
+                <div class="bg-white p-6 rounded-lg shadow-xl max-w-sm w-full text-center">
+                    <p class="text-lg text-gray-800 mb-4">${message}</p>
+                    <button id="alertCloseBtn" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition duration-300">
+                        Entendi
+                    </button>
+                </div>
+            `;
+            document.body.appendChild(modal);
+
+            // Adiciona evento para fechar o modal
+            document.getElementById('alertCloseBtn').addEventListener('click', () => {
+                modal.remove();
+            });
+        }
+    </script>
+</body>
+</html>
